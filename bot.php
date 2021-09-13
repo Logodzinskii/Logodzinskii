@@ -2,10 +2,6 @@
 include_once 'dbacces.php';
 date_default_timezone_set('Europe/Moscow');
 
-$url = "https://api.telegram.org/bot1917661632:AAHNJoHhxhaJu_7NgVo5y5Vii_X1cus9nqw/setWebhook?url=https://myfunnybant.ru/bot.php";
-$update = json_decode(file_get_contents('php://input'), TRUE);
-$botToken = "1917661632:AAHNJoHhxhaJu_7NgVo5y5Vii_X1cus9nqw";
-$botAPI = "https://api.telegram.org/bot" . $botToken;
 $dbResponseArray=[];
     
 class user{
@@ -72,22 +68,6 @@ $names=$newUser->username;
 if (empty($newUser->telegrammid)) {
     //exit();
 }
-
-define('TOKEN', '1917661632:AAHNJoHhxhaJu_7NgVo5y5Vii_X1cus9nqw');
-
-// Функция вызова методов API.
-function sendTelegram($method, $response){
-	$ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/' . $method);  
-	curl_setopt($ch, CURLOPT_POST, 1);  
-	curl_setopt($ch, CURLOPT_POSTFIELDS, $response);
-	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-	curl_setopt($ch, CURLOPT_HEADER, false);
-	$res = curl_exec($ch);
-	curl_close($ch);
-
-	return $res;
-}
-
     // Check if callback is set
     if (isset($update['callback_query'])) {
     
