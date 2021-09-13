@@ -1,5 +1,5 @@
 <?php
-include_once 'dbacces.php';
+include_once 'c:/xampp/htdocs/bot/dbacces.php';
 date_default_timezone_set('Europe/Moscow');
 
 $dbResponseArray=[];
@@ -400,12 +400,21 @@ function showMeTOP10($idchat,$connect,$text,&$dbResponseArray,$botAPI):array
                     $path = str_replace('https://myfunnybant.ru/', '', $rows["guid"]);
                     // запишем в массив все записи которые получили из базы данных
 
-                     $dbResponseArray[] = [
+                    $keyboard1 = [
+                        'inline_keyboard' => [
+                            [
+                                ['text' => 'Перейти к заказу', 'callback_data' => $row["sku"]],
+                            ]
+                        ]
+                    ];
+                    $reply_markup = json_encode($keyboard1);
+                    $dbResponseArray[] = [
                         'chat_id' => $idchat,
                         'photo' => curl_file_create(__DIR__ . '/' . $path),
                         'caption' => "Название: {$row["sku"]}; \n Артикул: #{$row["sku"]} \n Цена: {$row["max_price"]}. ",
                         'reply_markup'=>$reply_markup,
                     ];
+
                 }
             }
         }
@@ -423,11 +432,10 @@ $idchat = $dbResponseArray[0]['chat_id'];
 
         sendTelegram('sendPhoto',$dbResponseArray[$i]);
 
-        // Вывод на экран;
+        file_get_contents($botAPI . "/sendMessage?{$data}&reply_markup={$keyboard1}");
 
-
-        file_get_contents($botAPI . "/sendMessage?{$data}&reply_markup={$keyboard}");
         $sum++;
+
     }
     
     $rowStop= ($sum + 4) <= count($dbResponseArray) ? $sum + 4 : count($dbResponseArray);
