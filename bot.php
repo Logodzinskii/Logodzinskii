@@ -8,18 +8,17 @@ date_default_timezone_set('asia/yekaterinburg');
 
 
 class user{
-    public $id, $username,$status,$dataAdd;
+    public $id, $username,$status,$dataAdd,$connect;
     public function __construct($id,$first_name,$status,$dataAdd){
         $this-> telegrammid = $id;
         $this-> username = $first_name;
         $this-> status = $status;
         $this-> dataAdd = $dataAdd;
-        $this->addAnonimUser();
+        $this->addAnonimUser($connect);
     }
 
-    public function addAnonimUser(){
-        $connect = new mysqli("localhost", "u643288077_myfunnyadmin", "6^f;yZPW]F", "u643288077_myfunnybant");
-        $connect->query("SET NAMES 'utf8' ");
+    public function addAnonimUser($connect){
+
         $id = $this->telegrammid;
         $username = $this->username;
         $status = $this->status;
@@ -61,7 +60,7 @@ $first_name = $update['message']['chat']['first_name'];
 $status = 'buyer';
 $dataAdd = date('Y-m-d');
 
-$newUser = new user($id,$first_name,$status,$dataAdd);
+$newUser = new user($id,$first_name,$status,$dataAdd,$connect);
 
 //$newUser->id = $data['message']['chat']['id'];
 //$newUser->username = $data['message']['chat']['first_name'];
@@ -77,7 +76,7 @@ $dbResponseArray=[];
 // Check if callback is set
 if (isset($update['callback_query'])) {
     $dataAdd = date('Y-m-d');
-    $newUser = new user($update['callback_query']['from']['id'],$update['callback_query']['from']['first_name'],'newSeller',$dataAdd);
+    $newUser = new user($update['callback_query']['from']['id'],$update['callback_query']['from']['first_name'],'newSeller',$dataAdd,$connect);
 
     $callback_tumbler = $update['callback_query']['data'];
 
@@ -131,7 +130,7 @@ if (isset($update['callback_query'])) {
 }
 
 // Прислали фото. Проверяем является ли автор модератором сайта, если да то сохраняем в папку fileitems
-if (!empty($update['message']['photo']) && ($newUser->status=='manager'||'seller'))
+if (!empty($update['message']['photo']) && ($newUser->status !='buyer'))
 {
 
     $photo = array_pop($update['message']['photo']);
