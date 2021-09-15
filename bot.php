@@ -1,9 +1,9 @@
 <?php
-include_once 'c:/xampp/htdocs/bot/dbacces.php';
-date_default_timezone_set('Europe/Moscow');
+include_once 'dbacces.php';
+date_default_timezone_set('asia/yekaterinburg');
 
-$dbResponseArray=[];
-    
+
+
 class user{
     public $id, $username,$status,$dataAdd;
     public function __construct($id,$first_name,$status,$dataAdd){
@@ -41,10 +41,10 @@ class user{
             }
         }
     }
-   public function getUserId()
-      {
+    public function getUserId()
+    {
         return $this -> telegrammid;
-      }
+    }
 
 }
 class message{
@@ -68,89 +68,95 @@ $names=$newUser->username;
 if (empty($newUser->telegrammid)) {
     //exit();
 }
-    // Check if callback is set
-    if (isset($update['callback_query'])) {
-    
-        $callback_tumbler = $update['callback_query']['data'];
-        
-        if (strpos($callback_tumbler,'@')>0){
 
-            $arrstr = explode('@',$callback_tumbler);
-            $text = $arrstr[0];
-            $arrpage = explode('|',$arrstr[1]);
+$dbResponseArray=[];
 
-            //showMeTOP10($update['callback_query']['from']['id'],$connect,$text,$dbResponseArray,$botAPI);
-            parsingDBRequest(showMeTOP10($update['callback_query']['from']['id'],$connect,$text,$dbResponseArray,$botAPI),$arrpage[0],$arrpage[1],$botAPI,$text);
+// Check if callback is set
+if (isset($update['callback_query'])) {
+    $dataAdd = date('Y-m-d');
+    $newUser = new user($update['callback_query']['from']['id'],$update['callback_query']['from']['first_name'],'newSeller',$dataAdd);
 
-        }elseif(strpos($callback_tumbler,'*')>0){
+    $callback_tumbler = $update['callback_query']['data'];
 
-            $text = '/'.$callback_tumbler;
-            $text = str_replace('*','',$text);
+    if (strpos($callback_tumbler,'@')>0){
 
-            //showMeTOP10($update['callback_query']['from']['id'],$connect,$text,$dbResponseArray,$botAPI);
-            
-            
-            $itemStart = 4; 
-            
-            parsingDBRequest(showMeTOP10($update['callback_query']['from']['id'],$connect,$text,$dbResponseArray,$botAPI),0,$itemStart,$botAPI,$text);
-            
-        }elseif(strpos($callback_tumbler,'#')>0){
-            
-            $text = '/'.$callback_tumbler;
-            $text = str_replace('#','',$text);
-            
-            newmessage(trim($text),$update['callback_query']['from']['id'],$connect);
-           
-        }
-        else{   
+        $arrstr = explode('@',$callback_tumbler);
+        $text = $arrstr[0];
+        $arrpage = explode('|',$arrstr[1]);
 
-            $data = http_build_query([
-                'text' => 'Поступил заказ, артикул - ' . $update['callback_query']['data'] . '. От пользователя: '. $update['callback_query']['from']['id']. '. Имя пользователя: ' . $update['callback_query']["message"]["chat"]["first_name"],
-                'chat_id' => '645879928'
-            ]);
-            
-            file_get_contents($botAPI . "/sendMessage?{$data}");
-            
-            $data = http_build_query([
-                'text' => 'Мы получили ваш заказ, напишите мне https://t.me/myfunnybant_manager Ваш код заказа: #' . $update['callback_query']['from']['id'],
-                'chat_id' => $update['callback_query']['from']['id']
-            ]);
-            
-            file_get_contents($botAPI . "/sendMessage?{$data}");
-        }
-             
+        parsingDBRequest(showMeTOP10($update['callback_query']['from']['id'],$connect,$text,$dbResponseArray,$botAPI),$arrpage[0],$arrpage[1],$botAPI,$text);
+
+    }elseif(strpos($callback_tumbler,'*')>0){
+
+        $text = '/'.$callback_tumbler;
+        $text = str_replace('*','',$text);
+
+        $itemStart = 4;
+
+        parsingDBRequest(showMeTOP10($update['callback_query']['from']['id'],$connect,$text,$dbResponseArray,$botAPI),0,$itemStart,$botAPI,$text);
+
+    }elseif(strpos($callback_tumbler,'#')>0){
+
+        $arrstr = explode('#',$callback_tumbler);
+
+        $text = $arrstr[0];
+
+        $arrpage = strpos($arrstr[1], "|")>0 ? explode('|',$arrstr[1]) : false;
+        $text = '/'.$text;
+
+
+        newmessage(trim($text),$newUser,$connect,$arrpage[0]);
+
     }
-    
+    else{
+
+        $data = http_build_query([
+            'text' => 'Поступил заказ, артикул - ' . $update['callback_query']['data'] . '. От пользователя: '. $update['callback_query']['from']['id']. '. Имя пользователя: ' . $update['callback_query']["message"]["chat"]["first_name"],
+            'chat_id' => '645879928'
+        ]);
+
+        file_get_contents($botAPI . "/sendMessage?{$data}");
+
+        $data = http_build_query([
+            'text' => 'Мы получили ваш заказ, напишите мне https://t.me/myfunnybant_manager Ваш код заказа: #' . $update['callback_query']['from']['id'],
+            'chat_id' => $update['callback_query']['from']['id']
+        ]);
+
+        file_get_contents($botAPI . "/sendMessage?{$data}");
+    }
+
+}
+
 // Прислали фото. Проверяем является ли автор модератором сайта, если да то сохраняем в папку fileitems
-if (!empty($update['message']['photo']) && ($newUser->status=='manager'))
+if (!empty($update['message']['photo']) && ($newUser->status=='manager'||'seller'))
 {
 
-	$photo = array_pop($update['message']['photo']);
-	$text = $update['message']['text'];
-	$res = sendTelegram(
-		'getFile', 
-		array(
-			'file_id' => $photo['file_id']
-		)
-	);
-	
-	$res = json_decode($res, true);
-	if ($res['ok'] && $update['message']['caption'] == '') {
+    $photo = array_pop($update['message']['photo']);
+    $text = $update['message']['text'];
+    $res = sendTelegram(
+        'getFile',
+        array(
+            'file_id' => $photo['file_id']
+        )
+    );
 
-		$src = 'https://api.telegram.org/file/bot' . TOKEN . '/' . $res['result']['file_path'];
-		$dest = __DIR__ . '/fotoitems/'. basename($src);
+    $res = json_decode($res, true);
+    if ($res['ok'] && $update['message']['caption'] == '') {
 
-		if (copy($src, $dest)) {
+        $src = 'https://api.telegram.org/file/bot' . TOKEN . '/' . $res['result']['file_path'];
+        $dest = __DIR__ . '/fotoitems/'. basename($src);
 
-			sendTelegram(
-				'sendMessage', 
-				array(
-					'chat_id' => $update['message']['chat']['id'],
-					'text' => basename($src) . ' /Add@артикул|название|цена|количество|описание|имя файла'
-				)
-			);
-			
-		}else{
+        if (copy($src, $dest)) {
+
+            sendTelegram(
+                'sendMessage',
+                array(
+                    'chat_id' => $update['message']['chat']['id'],
+                    'text' => basename($src) . ' /Add@артикул|название|цена|количество|описание|имя файла'
+                )
+            );
+
+        }else{
 
             sendTelegram(
                 'sendMessage',
@@ -160,31 +166,38 @@ if (!empty($update['message']['photo']) && ($newUser->status=='manager'))
                 )
             );
         }
-	}else{
-	    
-	    $src = 'https://api.telegram.org/file/bot' . TOKEN . '/' . $res['result']['file_path'];
-		$dest = __DIR__ . '/saleitems/' . basename($src);
+    }else{
+
+        $src = 'https://api.telegram.org/file/bot' . TOKEN . '/' . $res['result']['file_path'];
+        $dest = __DIR__ . '/saleitems/' . basename($src);
         $idchat = $update['message']['chat']['id'];
         $dateadd = date('Y-m-d');
 
-		if (copy($src, $dest)) {
-		    
-		    $arrData = explode(',',$update['message']['caption']);
-		    $iditem = explode('.',basename($src));
-		    $id = explode('_',$iditem[0]);
-		    $totalPrice = $arrData[0] * $arrData[1];
-		    
-		    $sql = "INSERT into saleitems(id,sale_to_chatID,date_sale,count_items,sale_price,sale_file) values ('$id[1]','$idchat', '$dateadd' ,'$arrData[0]','$totalPrice','$dest')";
+        if (copy($src, $dest)) {
+
+            $arrData = explode(',',$update['message']['caption']);
+            $iditem = explode('.',basename($src));
+            $id = explode('_',$iditem[0]);
+            $totalPrice = $arrData[0] * $arrData[1];
+
+            $sql = "INSERT into saleitems(id,sale_to_chatID,date_sale,count_items,sale_price,sale_file) values ('$id[1]','$idchat', '$dateadd' ,'$arrData[0]','$totalPrice','$dest')";
             mysqli_query($connect, $sql);
-			sendTelegram(
-				'sendMessage', 
-				array(
-					'chat_id' => $update['message']['chat']['id'],
-					'text' => 'Запись внесена - id' . $id[1]
-				)
-			);
-			
-		}else{
+            sendTelegram(
+                'sendMessage',
+                array(
+                    'chat_id' => $update['message']['chat']['id'],
+                    'text' => 'Запись внесена - id' . $id[1]
+                )
+            );
+            sendTelegram(
+                'sendPhoto',
+                array(
+                    'chat_id' => 1454009127,
+                    'photo' => curl_file_create(__DIR__ . '/saleitems/'.basename($src) ),
+                    'caption'=>$newUser->username.' внес запись: '.$id[1].'На сумму - '. $totalPrice,
+                ));
+
+        }else{
             sendTelegram(
                 'sendMessage',
                 array(
@@ -193,9 +206,9 @@ if (!empty($update['message']['photo']) && ($newUser->status=='manager'))
                 )
             );
         }
-	}
+    }
 
-	exit();	
+    exit();
 }
 // Ответ на текстовые сообщения.
 $newTextMessage = new message();
@@ -203,76 +216,43 @@ $newTextMessage -> textmessage = $update['message']['text'];
 
 $message = !empty($newTextMessage->textmessage) ? newmessage($newTextMessage->textmessage, $newUser, $connect) : null ;
 
-function newmessage($fullStr,$newUser,$connect){
+function newmessage($fullStr,$newUser,$connect,$deftext=0){
     //проверим текст на содержание кодовых символов @
     $pos = !is_null(strpos($fullStr,"@"))  ? explode('@' , $fullStr) : $fullStr;
     $text = count($pos) > 0 ? strtolower($pos[0]) : strtolower($pos);
-    $idchat = is_int($newUser) ? $newUser : $newUser->telegrammid; 
+    $idchat = is_int($newUser) ? $newUser : $newUser->telegrammid;
     //$idchat = $newUser->telegrammid;
     //$idchat = $newUser;
     $status = $newUser->status;
-   
+
     switch ($text){
         case("/start"):
             $sendtext = $newUser->username . ", добро пожаловать! \n Чтобы узнать что умеет наш бот напиши команду /help";
             break;
         case ("/help"):
             //создаю массив с данными меню
-            $arrMenu=array(
-                'teenager'=>'Бантики для всех',
-                'school'=>'Школьная коллекция',
-                'baby'=>'Коллекция для садика',
-                'buy'=>'Как сделать заказ',
-            );
-            
-             $keyboard = [
-                        'inline_keyboard' => [
-                                [
-                                    ['text' => '🎀 Цветные банты к школьной форме', 'callback_data' => 's5'.'*']
-                                   
-                                ],
-                                [
-                                    ['text' => '🎀 К синей форме', 'callback_data' => 's1'.'*'],
-                                    ['text' => '🎀 К бордовой форме', 'callback_data' => 's2'.'*']
-                                ],
-                                [
-                                    ['text' => '🎀 К серой форме', 'callback_data' => 's3'.'*'],
-                                    ['text' => '🎀 Белые банты', 'callback_data' => 's4'.'*']
-                                ],
-                                
-                                [
-                                    ['text' => '👶 Для малышей, первые хвостики', 'callback_data' => 'b1'.'*'],
-                                ],
-                                [
-                                    ['text' => '👧 Дошколенок', 'callback_data' => 'b2'.'*'],
-                                ],
-                                [
-                                    ['text' => '😻 Значки', 'callback_data' => 'z1'.'*'],
-                                    ['text' => '🎁 Подвески', 'callback_data' => 'p1'.'*']
-                                ],
-                                [
-                                    ['text' => '👸 Ободки', 'callback_data' => 'o1'.'*'],
-                                    ['text' => '💰 Как купить?', 'callback_data' => 'buy#']
-                                ],
-                                [
-                                    ['text' => '🔎 Проверить по артикулу', 'callback_data' => 'findid'.'#']
-                                ],
-                                
-                            ]
-                        ];
-                       $reply_markup = json_encode($keyboard);
-                
-                
-                //Отправляю картинку с teenager
-                sendTelegram(
-                        'sendPhoto',
-                        array(
-                            'chat_id' => $idchat,
-                            'photo' => curl_file_create(__DIR__ . '/fotoitems/intro/teenager.jpg' ),
-                            'reply_markup'=>$reply_markup,
-                        ));
-                
-                file_get_contents($botAPI . "/sendMessage?{$data}&reply_markup={$keyboard}");
+
+            $keyboard = [
+                'inline_keyboard' => [
+                    [
+                        ['text' => '🙋 Приступить к работе', 'callback_data' => 'startshoptoday#']
+
+                    ],
+                ]
+            ];
+            $reply_markup = json_encode($keyboard);
+
+
+            //Отправляю картинку с teenager
+            sendTelegram(
+                'sendPhoto',
+                array(
+                    'chat_id' => $idchat,
+                    'photo' => curl_file_create(__DIR__ . '/fotoitems/intro/teenager.jpg' ),
+                    'reply_markup'=>$reply_markup,
+                ));
+
+            file_get_contents($botAPI . "/sendMessage?{$data}&reply_markup={$keyboard}");
             break;
         case ("/buy"):
 
@@ -291,7 +271,7 @@ EOD;
             break;
 
         case ("/toall"):
-           
+
             toAll($pos[1],$connect,$newUser);
             break;
 
@@ -310,62 +290,83 @@ EOD;
             updateItems($pos[1],$newUser,$connect);
 
             break;
+        case('/startshoptoday'):
+
+            startshoptoday($newUser,$connect);
+
+            break;
+        case('/closeshoptoday'):
+
+            startshoptoday($newUser,$connect);
+
+            break;
+        case('/yes_start'):
+            updateStatusUser($newUser,$connect,'seller',$deftext);
+            break;
+        case('/no_start'):
+            updateStatusUser($newUser,$connect,'buyer',$deftext);
+            break;
         case("/saletodayid"):
-        
-            saleToDay('i',$idchat,$connect);
-            
-        break;
+            otchet($text,$newUser,$connect);
+            //saleToDay($arrpage[0],$newUser,$connect);
+
+            break;
         case("/saletoday"):
-        
-            saleToDay('d',$idchat,$connect);
-            
-        break;
+
+            saleToDay($arrpage[0],$newUser,$connect);
+
+            break;
         case("/manager"):
 
-            if ($newUser->status === 'manager'){
-                
-            
-            $keyboard = [
-                        'inline_keyboard' => [
-                               
-                                [
-                                    ['text' => '💵 Продажа по артикулу', 'callback_data' => 'saleinfo#'],
-                                    ['text' => '📥 Добавить по артикулу', 'callback_data' => 'updateinfo#']
-                                ],
-                                [
-                                    ['text' => '🔎 Продажи за сегодня по артикулу', 'callback_data' => 'saletodayid#'],
-                                    ['text' => '🔎 Продажи за сегодня всего', 'callback_data' => 'saletoday#']
-                                ],
-                                
-                            ]
-                        ];
-                       $reply_markup = json_encode($keyboard);
+            if ($newUser->status != 'buyer'){
+
+
+                $keyboard = [
+                    'inline_keyboard' => [
+
+                        [
+                            ['text' => '💵 Продажи за сегодня по артикулу', 'callback_data' => 'saletodayid#|i'],
+                            ['text' => '💰 Продажи за сегодня всего', 'callback_data' => 'saletoday#|d']
+                        ],
+                        [
+                            ['text' => '🏪 Завершить работу', 'callback_data' => 'closeshoptoday#'],
+                        ],
+                    ]
+                ];
+                $reply_markup = json_encode($keyboard);
 
                 //Отправляю картинку с teenager
                 sendTelegram(
-                        'sendMessage',
-                        array(
-                            'chat_id' => $idchat,
-                            'text' => 'Команды для менеджера магазина',
-                            'reply_markup'=>$reply_markup,
-                        ));
-                
+                    'sendMessage',
+                    array(
+                        'chat_id' => $idchat,
+                        'text' => 'Команды для менеджера магазина',
+                        'reply_markup'=>$reply_markup,
+                    ));
+
                 file_get_contents($botAPI . "/sendMessage?{$data}&reply_markup={$keyboard}");
+            }else {
+                sendTelegram(
+                    'sendMessage',
+                    array(
+                        'chat_id' => $idchat,
+                        'text' => 'Нет полномочий! Код 1',
+                    ));
             }
-        break;
+            break;
         case ("/saleinfo"):
-        
-        $sendtext = strpos($fullStr,"@") . "Для внесения продажи - команда:\n /sale@артикул|количество|цена продажи";
-        
-        break;
-        
+
+            $sendtext = strpos($fullStr,"@") . "Для внесения продажи - команда:\n /sale@артикул|количество|цена продажи";
+
+            break;
+
         case ("/updateinfo"):
-        
-         $sendtext = strpos($fullStr,"@") . "Для добавления количества по артикулу - команда:\n /update@артикул|количество";
-            
-        break;
-        
-        
+
+            $sendtext = strpos($fullStr,"@") . "Для добавления количества по артикулу - команда:\n /update@артикул|количество";
+
+            break;
+
+
         default:
 
             $sendtext = strpos($fullStr,"@") . "Неправльная команда, для просмотра команд нажмите /help";
@@ -380,9 +381,9 @@ EOD;
     );
 }
 
-function showMeTOP10($idchat,$connect,$text,&$dbResponseArray,$botAPI):array
+function showMeTOP10($idchat, $connect, $text, &$dbResponseArray, $botAPI):array
 {
-   
+
     $str = str_replace("/", "", $text);
 
     $sql = "SELECT * FROM `wp_wc_product_meta_lookup` where sku LIKE '%" . $str . "%'";
@@ -396,10 +397,9 @@ function showMeTOP10($idchat,$connect,$text,&$dbResponseArray,$botAPI):array
             $resr = $connect->query($sqlr);
             if ($resr->num_rows > 0) {
                 while ($rows = $resr->fetch_assoc()) {
-
+                    $i=0;
                     $path = str_replace('https://myfunnybant.ru/', '', $rows["guid"]);
                     // запишем в массив все записи которые получили из базы данных
-
                     $keyboard1 = [
                         'inline_keyboard' => [
                             [
@@ -414,20 +414,21 @@ function showMeTOP10($idchat,$connect,$text,&$dbResponseArray,$botAPI):array
                         'caption' => "Название: {$row["sku"]}; \n Артикул: #{$row["sku"]} \n Цена: {$row["max_price"]}. ",
                         'reply_markup'=>$reply_markup,
                     ];
-
+                    $i++;
                 }
             }
+
         }
+        return $dbResponseArray;
     }
 
-    //parsingDBRequest($dbResponseArray,$rowStart,$rowOfset,$botAPI);
 
-    return $dbResponseArray;
 }
 
-function parsingDBRequest($dbResponseArray,$rowStart,$rowOfset,$botAPI,$text){
-$idchat = $dbResponseArray[0]['chat_id'];
-   $sum = $rowStart;
+function parsingDBRequest($dbResponseArray,$rowStart,$rowOfset,$botAPI,$text)
+{
+    $idchat = $dbResponseArray[0]['chat_id'];
+    $sum = $rowStart;
     for ($i=$rowStart;$i<=$rowOfset;$i++){
 
         sendTelegram('sendPhoto',$dbResponseArray[$i]);
@@ -437,9 +438,9 @@ $idchat = $dbResponseArray[0]['chat_id'];
         $sum++;
 
     }
-    
+
     $rowStop= ($sum + 4) <= count($dbResponseArray) ? $sum + 4 : count($dbResponseArray);
-    
+
     $keyboard = [
         'inline_keyboard' => [
             [
@@ -460,14 +461,51 @@ $idchat = $dbResponseArray[0]['chat_id'];
 
 
 }
+function startshoptoday($newUser,$connect){
+
+    $idchat = $newUser->telegrammid;
+    $sellerstatus = $newUser ->status;
+    $first_name = $newUser -> username;
+
+    $keyboard = [
+        'inline_keyboard' => [
+            [
+                ['text' => '🙏 Принять', 'callback_data' => 'yes_start#'.$idchat."|".$first_name]
+
+            ],
+
+            [
+                ['text' => '❌ Уволить', 'callback_data' => 'no_start#'.$idchat."|".$first_name]
+            ],
+
+        ]
+    ];
+    $reply_markup = json_encode($keyboard);
+    sendTelegram(
+        'sendMessage',
+        array(
+            'chat_id' => 1454009127,//1454009127 645879928
+            'text' => "Запрос пользователя:\n id - ". $idchat . "\n статус - ". $sellerstatus . "\n Имя: " . $first_name,
+            'reply_markup'=>$reply_markup,
+        )
+    );
+    file_get_contents($botAPI . "/sendMessage?{$data}&reply_markup={$keyboard}");
+    sendTelegram(
+        'sendMessage',
+        array(
+            'chat_id' => $idchat,
+            'text' => "Запрос принят, ожидайте",
+        )
+    );
+}
 function toAll($text,$connect,$newUser){
-if ($newUser->status != 'manager'){
+    if ($newUser->status != 'manager'){
         exit();
     }
-   
-   
+
+
     $arrData = explode("|",$text);
-    
+
     $sql = "SELECT * FROM `users`";
 // Отправляем запрос;
     $res = $connect -> query($sql);
@@ -499,45 +537,45 @@ if ($newUser->status != 'manager'){
     }
 }
 function addItems($text,$newUser,$connect){
-    
+
     if ($newUser->status != 'manager'){
         exit();
     }
-    
+
     $idchat = $newUser->telegrammid;
     $dateadd = date('Y-m-d');
     $arrData = explode("|",$text);
     if (count($arrData)=== 6) {
-    //получу последнюю запись в бд
-    $result = "SELECT * FROM `mybant` ORDER BY id DESC LIMIT 1";
-                 // Отправляем запрос;
-                    $res = $connect -> query($result);
-                    if ($res -> num_rows > 0) {
-                       while ($row = $res -> fetch_assoc()) {
-                       $newid = ($row['id'] + 1);
-                        $arrData[0]='/'.$arrData[0].'.'.$newid;
-                           
-                       }
-                    }
-    
+        //получу последнюю запись в бд
+        $result = "SELECT * FROM `mybant` ORDER BY id DESC LIMIT 1";
+        // Отправляем запрос;
+        $res = $connect -> query($result);
+        if ($res -> num_rows > 0) {
+            while ($row = $res -> fetch_assoc()) {
+                $newid = ($row['id'] + 1);
+                $arrData[0]='/'.$arrData[0].'.'.$newid;
+
+            }
+        }
+
         $sql = "INSERT into mybant(article,name,price,items,options,dateadd,foto) values ('$arrData[0]','$arrData[1]','$arrData[2]','$arrData[3]','$arrData[4]','$dateadd','$arrData[5]')";
-        
+
         mysqli_query($connect, $sql);
-        
-          $result = "SELECT * FROM `mybant` ORDER BY id DESC LIMIT 1";
-                 // Отправляем запрос;
-                    $res = $connect -> query($result);
-                    if ($res -> num_rows > 0) {
-                       while ($row = $res -> fetch_assoc()) {
-                          sendTelegram(
-                                'sendMessage',
-                                array(
-                                    'chat_id' => $idchat,
-                                    'text' => 'Артикул добавленного товара - ' . $row['article'],
-                                )
-                            );  
-                       }
-                    }
+
+        $result = "SELECT * FROM `mybant` ORDER BY id DESC LIMIT 1";
+        // Отправляем запрос;
+        $res = $connect -> query($result);
+        if ($res -> num_rows > 0) {
+            while ($row = $res -> fetch_assoc()) {
+                sendTelegram(
+                    'sendMessage',
+                    array(
+                        'chat_id' => $idchat,
+                        'text' => 'Артикул добавленного товара - ' . $row['article'],
+                    )
+                );
+            }
+        }
     }else{
         sendTelegram(
             'sendMessage',
@@ -561,51 +599,51 @@ function saleItems($text,$newUser,$connect){
     $arrData = explode("|",$text);
 
     if (count($arrData)=== 3) {
-        //получаю id 
+        //получаю id
         $arrId = explode('.',$arrData[0]);
         $id = $arrId[1];
         //получаем количество товаров по id
-         $sql = "SELECT * FROM `mybant` where id = '$id'";
-    
-            // Отправляем запрос;
-            $res = $connect -> query($sql);
-            if ($res -> num_rows > 0) {
-               while ($row = $res -> fetch_assoc()) {
-                   //проверим если количество товаров на складе <= количества продаваемого товара, то производим изменения и вносим данные о продаже
-                    if ($arrData[1]<=$row["items"]){
+        $sql = "SELECT * FROM `mybant` where id = '$id'";
 
-                        $total = $row["items"];
-                        $newItems =  $total - $arrData[1];
-                        $totalPrice = $arrData[1] * $arrData[2];
+        // Отправляем запрос;
+        $res = $connect -> query($sql);
+        if ($res -> num_rows > 0) {
+            while ($row = $res -> fetch_assoc()) {
+                //проверим если количество товаров на складе <= количества продаваемого товара, то производим изменения и вносим данные о продаже
+                if ($arrData[1]<=$row["items"]){
 
-                        $sql = "INSERT into saleitems(id,sale_to_chatID,date_sale,count_items,sale_price) values ('$arrData[0]','$idchat', '$dateadd' ,'$arrData[1]','$totalPrice')";
-                        mysqli_query($connect, $sql);
-                        
-                        $sqli = "UPDATE mybant SET items='$newItems' WHERE id='$id'";
-                        mysqli_query($connect, $sqli);
-                        
-                        sendTelegram(
-                            'sendMessage',
-                            array(
-                                'chat_id' => $idchat,
-                                'text' => 'Продажа id - '.$arrData[0]. ' - ' .$arrData[1] .' шт., осталось- '.$newItems,
-                            )
-                        );
-                    }else{
-                         sendTelegram(
-                            'sendMessage',
-                            array(
-                                'chat_id' => $idchat,
-                                'text' => 'количество товаров к продаже '. $arrData[1] . ' болше чем есть ' . $row["items"],
-                            )
-                        );
-                    }
-                    
-               }
+                    $total = $row["items"];
+                    $newItems =  $total - $arrData[1];
+                    $totalPrice = $arrData[1] * $arrData[2];
+
+                    $sql = "INSERT into saleitems(id,sale_to_chatID,date_sale,count_items,sale_price) values ('$arrData[0]','$idchat', '$dateadd' ,'$arrData[1]','$totalPrice')";
+                    mysqli_query($connect, $sql);
+
+                    $sqli = "UPDATE mybant SET items='$newItems' WHERE id='$id'";
+                    mysqli_query($connect, $sqli);
+
+                    sendTelegram(
+                        'sendMessage',
+                        array(
+                            'chat_id' => $idchat,
+                            'text' => 'Продажа id - '.$arrData[0]. ' - ' .$arrData[1] .' шт., осталось- '.$newItems,
+                        )
+                    );
+                }else{
+                    sendTelegram(
+                        'sendMessage',
+                        array(
+                            'chat_id' => $idchat,
+                            'text' => 'количество товаров к продаже '. $arrData[1] . ' болше чем есть ' . $row["items"],
+                        )
+                    );
+                }
+
             }
+        }
 
 
-       
+
     }else{
         sendTelegram(
             'sendMessage',
@@ -623,62 +661,144 @@ function updateItems($text,$newUser,$connect){
 
     }
     $arrData = explode("|",$text);
-    //получаю id 
+    //получаю id
     $arrId = explode('.',$arrData[0]);
     $id = $arrId[1];
     $idchat = $newUser->telegrammid;
 
     $sqli = "UPDATE mybant SET items='$arrData[1]' WHERE id='$id'";
-                        mysqli_query($connect, $sqli);
-                        
-                        sendTelegram(
-                            'sendMessage',
-                            array(
-                                'chat_id' => $idchat,
-                                'text' => 'Количество у id - '.$arrData[0]. ' изменено на - ' .$arrData[1] .' шт.',
-                            )
-                        );
+    mysqli_query($connect, $sqli);
+
+    sendTelegram(
+        'sendMessage',
+        array(
+            'chat_id' => $idchat,
+            'text' => 'Количество у id - '.$arrData[0]. ' изменено на - ' .$arrData[1] .' шт.',
+        )
+    );
+}
+function updateStatusUser($newUser,$connect,$newStatus,$idSallers){
+    if ($newUser->status != 'manager'){
+        sendTelegram(
+            'sendMessage',
+            array(
+                'chat_id' => $newUser->telegrammid,
+                'text' => 'нет полномочий',
+            )
+        );
+        exit();
+
+    }
+    $idchat = $newUser->telegrammid;
+    $sqli = "UPDATE users SET status='$newStatus' WHERE telegram_id='$idSallers'";
+    mysqli_query($connect, $sqli);
+
+    sendTelegram(
+        'sendMessage',
+        array(
+            'chat_id' => $idchat,
+            'text' => 'Статус изменен:' . $idSallers . ' новый статус: ' . $newStatus,
+        )
+    );
+
+    $id = $newUser->telegrammid;
+    $first_name = $newUser->username;
+    $dataAdd = $newUser->dataAdd;
+
+    $newUser = new user($id,$first_name,$newStatus,$dataAdd);
+
+    $subject = $newStatus == 'seller' ? '🙋 Добро пожаловать!' : '🙋 До скорой встречи!';
+    sendTelegram(
+        'sendMessage',
+        array(
+            'chat_id' => $idSallers,
+            'text' => $subject,
+        )
+    );
 }
 function saleToDay($text,$newUser,$connect){
 
-    if ($newUser->status != 'manager'){
-        //exit();
+    if (($newUser->status === 'buyer')){
+        sendTelegram(
+            'sendMessage',
+            array(
+                'chat_id' => $newUser->telegrammid,
+                'text' => 'нет полномочий на просмотр',
+            )
+        );
+        exit();
     }
- 
+
     $tumbler = $text == 'i' ? $tumbler = 'id' : $tumbler = 'date_sale';
-    
+
     $dateSale = date('Y-m-d');
-   
-        //получаем количество товаров по id
+
+    //получаем количество товаров по id
     $sql = "SELECT $tumbler, SUM(sale_price) as totalSale, SUM(count_items) as totalCount FROM `saleitems` where date_sale = '$dateSale' GROUP BY $tumbler";
-   
+
     $str='';
-            // Отправляем запрос;
-            $res = $connect -> query($sql);
-            if ($res -> num_rows > 0) {
-               while ($row = $res -> fetch_assoc()) {
-                        $article = $row["id"];
-                        $count = $row["totalCount"];
-                        $salePrice = $row["totalSale"]; 
-                        $dat = $row["date_sale"];
-                        $str = $str.  $dat . ' Артикул - ' . $article . ' Количество - ' .$count. ' 💰 Итого - '. $salePrice ."\n";
-              }  
-               sendTelegram(
-                            'sendMessage',
-                            array(
-                                'chat_id' => $newUser,
-                                'text' => $str,
-                            )
-                        );
-               
-           
-            }
-            
-    
+    // Отправляем запрос;
+    $res = $connect -> query($sql);
+    if ($res -> num_rows > 0) {
+        while ($row = $res -> fetch_assoc()) {
+            $article = $row["id"];
+            $count = $row["totalCount"];
+            $salePrice = $row["totalSale"];
+            $dat = $row["date_sale"];
+            $link = ($row["sale_file"]);
+            $str = $str.  $dat . ' Артикул - ' . $article . ' Количество - ' .$count. ' 💰 Итого - '. $salePrice ."\n" ;
+
+        }
+
+
+
+        sendTelegram(
+            'sendMessage',
+            array(
+                'chat_id' => $newUser->telegrammid,
+                'text' => $str,
+            )
+        );
+        ///home/u643288077/domains/myfunnybant.ru/public_html/saleitems/file_43.jpg
+
+
+
+
+    }
+
+
 }
 
-function otchet(){
-    
+function otchet($text,$newUser,$connect){
+
+    if ($newUser->status === 'buyer'){
+        exit();
+    }
+
+    $dateSale = date('Y-m-d');
+
+    $sql = "SELECT * FROM `saleitems` where date_sale = '$dateSale'";
+
+    $res = $connect -> query($sql);
+
+    if ($res -> num_rows > 0) {
+
+        while ($row = $res -> fetch_assoc()) {
+
+            $filename = explode("/", $row['sale_file']);
+
+            sendTelegram(
+                'sendPhoto',
+                array(
+                    'chat_id' => $newUser->telegrammid,
+                    'photo' => curl_file_create(__DIR__ . '/saleitems/'.$filename[7] ),
+                    'caption'=>'Запись: '.$row['id'].' На сумму - '. $row['sale_price'],
+                ));
+
+        }
+
+    }
+
 }
 
    
