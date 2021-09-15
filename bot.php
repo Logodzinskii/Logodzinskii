@@ -1,7 +1,7 @@
 <?php
-include_once '/bot-api/dbacces.php';
-include_once '/bot-api/menedger-shop.php';
-include_once '/bot-api/client-shop.php';
+include_once 'dbacces.php';
+include_once 'menedger-shop.php';
+include_once 'client-shop.php';
 
 date_default_timezone_set('asia/yekaterinburg');
 

@@ -29,7 +29,7 @@ function showMeTOP10($idchat, $connect, $text, &$dbResponseArray, $botAPI):array
                     $reply_markup = json_encode($keyboard1);
                     $dbResponseArray[] = [
                         'chat_id' => $idchat,
-                        'photo' => curl_file_create(__DIR__ . '/' . $path),
+                        'photo' => curl_file_create(__DIR__ . 'client-shop.php/' . $path),
                         'caption' => "Название: {$row["sku"]}; \n Артикул: #{$row["sku"]} \n Цена: {$row["max_price"]}. ",
                         'reply_markup'=>$reply_markup,
                     ];
