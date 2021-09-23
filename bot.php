@@ -14,7 +14,7 @@ class user{
         $this-> username = $first_name;
         $this-> status = $status;
         $this-> dataAdd = $dataAdd;
-        $this->addAnonimUser($connect);
+        $this-> addAnonimUser($connect);
     }
 
     public function addAnonimUser($connect){
