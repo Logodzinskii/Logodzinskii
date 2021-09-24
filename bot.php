@@ -175,13 +175,15 @@ if (!empty($update['message']['photo']) && ($newUser->status !='buyer'))
                     'text' => 'Запись внесена - id' . $id[1]
                 )
             );
-            sendTelegram(
-                'sendPhoto',
-                array(
-                    'chat_id' => 1454009127,
-                    'photo' => curl_file_create(__DIR__ . '/saleitems/'.basename($src) ),
-                    'caption'=>$newUser->username.' внес запись: '.$id[1].'На сумму - '. $totalPrice,
-                ));
+            if ($newUser->status ==='seller'){//если отправляет продавец, то направляем фото и данные менеджеру
+                sendTelegram(
+                    'sendPhoto',
+                    array(
+                        'chat_id' => 1454009127,
+                        'photo' => curl_file_create(__DIR__ . '/saleitems/'.basename($src) ),
+                        'caption'=>$newUser->username.' внес запись: '.$id[1].'На сумму - '. $totalPrice,
+                    ));
+            }
 
         }else{
             sendTelegram(
