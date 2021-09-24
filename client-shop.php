@@ -41,7 +41,6 @@ function showMeTOP10($idchat, $connect, $text, &$dbResponseArray, $botAPI):array
 
     }
     return $dbResponseArray;
-
 }
 
 function parsingDBRequest($dbResponseArray,$rowStart,$rowOfset,$botAPI,$text)
@@ -77,6 +76,5 @@ function parsingDBRequest($dbResponseArray,$rowStart,$rowOfset,$botAPI,$text)
         ));
 
     file_get_contents($botAPI . "/sendMessage?{$data}&reply_markup={$keyboard}");
-
 
 }

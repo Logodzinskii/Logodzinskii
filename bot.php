@@ -1,12 +1,11 @@
 <?php
+
 include_once 'dbacces.php';
 include_once 'menedger-shop.php';
-include_once 'client-shop.php';
+//include_once 'client-shop.php'; в разработке
 include_once 'calculate.php';
 
 date_default_timezone_set('asia/yekaterinburg');
-
-
 
 class user{
     public $id, $username,$status,$dataAdd,$connect;
@@ -44,10 +43,6 @@ class user{
             }
         }
     }
-    public function getUserId()
-    {
-        return $this -> telegrammid;
-    }
 
 }
 class message{
@@ -60,22 +55,14 @@ $id = $update['message']['chat']['id'];
 $first_name = $update['message']['chat']['first_name'];
 $status = 'buyer';
 $dataAdd = date('Y-m-d');
-
 $newUser = new user($id,$first_name,$status,$dataAdd,$connect);
-
-//$newUser->id = $data['message']['chat']['id'];
-//$newUser->username = $data['message']['chat']['first_name'];
-
 $names=$newUser->username;
-
-if (empty($newUser->telegrammid)) {
-    //exit();
-}
-
 $dbResponseArray=[];
 
-// Check if callback is set
+// Получаем данные, переданные от нажатия кнопки. Разбиваем строку по кодовым символам @ # | в зависимости от символа вызываем нужную команду, надо подумать как переделать...
+
 if (isset($update['callback_query'])) {
+
     $dataAdd = date('Y-m-d');
     $newUser = new user($update['callback_query']['from']['id'],$update['callback_query']['from']['first_name'],'newSeller',$dataAdd,$connect);
     $message = $update['callback_query']['message']['message_id'];
@@ -93,7 +80,6 @@ if (isset($update['callback_query'])) {
 
         $text = '/'.$callback_tumbler;
         $text = str_replace('*','',$text);
-
         $itemStart = 4;
 
         parsingDBRequest(showMeTOP10($update['callback_query']['from']['id'],$connect,$text,$dbResponseArray,$botAPI),0,$itemStart,$botAPI,$text);
@@ -101,12 +87,9 @@ if (isset($update['callback_query'])) {
     }elseif(strpos($callback_tumbler,'#')>0){
 
         $arrstr = explode('#',$callback_tumbler);
-
         $text = $arrstr[0];
-
         $arrpage = strpos($arrstr[1], "|")>0 ? explode('|',$arrstr[1]) : false;
         $text = '/'.$text;
-
 
         newmessage(trim($text),$newUser,$connect,$arrpage[0],$message);
 
@@ -130,7 +113,7 @@ if (isset($update['callback_query'])) {
 
 }
 
-// Прислали фото. Проверяем является ли автор модератором сайта, если да то сохраняем в папку fileitems
+// Прислали фото. Проверяем является ли автор модератором сайта, если да, то сохраняем в папку fileitems
 if (!empty($update['message']['photo']) && ($newUser->status !='buyer'))
 {
 
@@ -144,6 +127,7 @@ if (!empty($update['message']['photo']) && ($newUser->status !='buyer'))
     );
 
     $res = json_decode($res, true);
+
     if ($res['ok'] && $update['message']['caption'] == '') {
 
         $src = 'https://api.telegram.org/file/bot' . TOKEN . '/' . $res['result']['file_path'];
@@ -182,7 +166,6 @@ if (!empty($update['message']['photo']) && ($newUser->status !='buyer'))
             $iditem = explode('.',basename($src));
             $id = explode('_',$iditem[0]);
             $totalPrice = $arrData[0] * $arrData[1];
-
             $sql = "INSERT into saleitems(id,sale_to_chatID,date_sale,count_items,sale_price,sale_file) values ('$id[1]','$idchat', '$dateadd' ,'$arrData[0]','$totalPrice','$dest')";
             mysqli_query($connect, $sql);
             sendTelegram(
@@ -216,7 +199,6 @@ if (!empty($update['message']['photo']) && ($newUser->status !='buyer'))
 // Ответ на текстовые сообщения.
 $newTextMessage = new message();
 $newTextMessage -> textmessage = $update['message']['text'];
-
 $message = !empty($newTextMessage->textmessage) ? newmessage($newTextMessage->textmessage, $newUser, $connect) : null ;
 
 function newmessage($fullStr,$newUser,$connect,$deftext=0,$message=''){
@@ -224,8 +206,6 @@ function newmessage($fullStr,$newUser,$connect,$deftext=0,$message=''){
     $pos = !is_null(strpos($fullStr,"@"))  ? explode('@' , $fullStr) : $fullStr;
     $text = count($pos) > 0 ? strtolower($pos[0]) : strtolower($pos);
     $idchat = is_int($newUser) ? $newUser : $newUser->telegrammid;
-    //$idchat = $newUser->telegrammid;
-    //$idchat = $newUser;
     $status = $newUser->status;
 
     switch ($text){
@@ -234,7 +214,6 @@ function newmessage($fullStr,$newUser,$connect,$deftext=0,$message=''){
             break;
         case ("/help"):
             //создаю массив с данными меню
-
             $keyboard = [
                 'inline_keyboard' => [
                     [
@@ -245,8 +224,7 @@ function newmessage($fullStr,$newUser,$connect,$deftext=0,$message=''){
             ];
             $reply_markup = json_encode($keyboard);
 
-
-            //Отправляю картинку с teenager
+            //Отправляю картинку заставку
             sendTelegram(
                 'sendPhoto',
                 array(
@@ -266,51 +244,14 @@ function newmessage($fullStr,$newUser,$connect,$deftext=0,$message=''){
                     ));
             }
             break;
-        case ("/buy"):
-
-            $sendtext = <<<EOD
-🙋 Как выбрать из наличия и сделать заказ?📑
-📥 Отправте мне артикул товара сообщением https://t.me/myfunnybant_manager;
-📫 Я свяжусь с вами для обсуждения способа доставки;
-🚛 После выбора способа доставки, 💳 оплачиваете заказ (перевод на карту сбербанка).
-
-Способы доставки:
--Самовывоз из г. Ектеринбург, район ЦПКиО им.Маяковского;
--Отправка "Почтой России", СДЭК, СБЕРЛОГИСТИКА.
-
-EOD;
-
-            break;
-
-        case ("/toall"):
-
-            toAll($pos[1],$connect,$newUser);
-            break;
-
-        case ("/add"):
-
-            addItems($pos[1],$newUser,$connect);
-
-            break;
         case("/sale"):
-
             saleItems($pos[1],$newUser,$connect);
-
-            break;
-        case("/update"):
-
-            updateItems($pos[1],$newUser,$connect);
-
             break;
         case('/startshoptoday'):
-
             startshoptoday($newUser,$connect);
-
             break;
         case('/closeshoptoday'):
-
             startshoptoday($newUser,$connect);
-
             break;
         case('/yes_start'):
             updateStatusUser($newUser,$connect,'seller',$deftext);
@@ -320,18 +261,12 @@ EOD;
             break;
         case("/saletodayid"):
             otchet($text,$newUser,$connect,$message);
-            //saleToDay($arrpage[0],$newUser,$connect);
-
             break;
         case("/saletoday"):
-
             saleToDay($arrpage[0],$newUser,$connect,$message);
-
             break;
         case("/saleall"):
-
             callReport($arrpage[0],$newUser,$connect,$message);
-
             break;
         case("/manager"):
             sendTelegram(
@@ -340,8 +275,7 @@ EOD;
                     'chat_id' => $idchat,
                     'text' => 'Тут будут данные по продажам',
                 ));
-            if ($newUser->status == 'seller'){
-
+            if ($newUser->status == 'seller'){//доступно для нанятого продавца
 
                 $keyboard = [
                     'inline_keyboard' => [
@@ -355,7 +289,9 @@ EOD;
                         ],
                     ]
                 ];
-            }elseif ($newUser->status == 'manager'){
+
+            }elseif ($newUser->status == 'manager'){//доступно для управляющего магазином
+
                 $keyboard = [
                     'inline_keyboard' => [
 
@@ -369,7 +305,7 @@ EOD;
                     ]
                 ];
 
-            }elseif($newUser->status == 'buyer') {
+            }elseif($newUser->status == 'buyer') {//если обратился тот у кого не полномочий
                 sendTelegram(
                     'sendMessage',
                     array(
@@ -377,9 +313,9 @@ EOD;
                         'text' => 'Нет полномочий! Код 1',
                     ));
             }
+
             $reply_markup = json_encode($keyboard);
 
-            //Отправляю картинку с teenager
             sendTelegram(
                 'sendMessage',
                 array(
@@ -391,18 +327,6 @@ EOD;
             file_get_contents($botAPI . "/sendMessage?{$data}&reply_markup={$keyboard}");
 
             break;
-        case ("/saleinfo"):
-
-            $sendtext = strpos($fullStr,"@") . "Для внесения продажи - команда:\n /sale@артикул|количество|цена продажи";
-
-            break;
-
-        case ("/updateinfo"):
-
-            $sendtext = strpos($fullStr,"@") . "Для добавления количества по артикулу - команда:\n /update@артикул|количество";
-
-            break;
-
 
         default:
 
@@ -414,15 +338,6 @@ EOD;
         array(
             'chat_id' => $idchat,
             'text' => $sendtext
-        )
-    );
-}
-function test(){
-    sendTelegram(
-        'sendMessage',
-        array(
-            'chat_id' => 645879928,
-            'text' => 'succes'
         )
     );
 }
