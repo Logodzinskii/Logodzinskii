@@ -2,6 +2,7 @@
 include_once 'dbacces.php';
 include_once 'menedger-shop.php';
 include_once 'client-shop.php';
+include_once 'calculate.php';
 
 date_default_timezone_set('asia/yekaterinburg');
 
@@ -9,12 +10,12 @@ date_default_timezone_set('asia/yekaterinburg');
 
 class user{
     public $id, $username,$status,$dataAdd,$connect;
-    public function __construct($id,$first_name,$status,$dataAdd){
+    public function __construct($id,$first_name,$status,$dataAdd,$connect){
         $this-> telegrammid = $id;
         $this-> username = $first_name;
         $this-> status = $status;
         $this-> dataAdd = $dataAdd;
-        $this-> addAnonimUser($connect);
+        $this->addAnonimUser($connect);
     }
 
     public function addAnonimUser($connect){
@@ -77,7 +78,7 @@ $dbResponseArray=[];
 if (isset($update['callback_query'])) {
     $dataAdd = date('Y-m-d');
     $newUser = new user($update['callback_query']['from']['id'],$update['callback_query']['from']['first_name'],'newSeller',$dataAdd,$connect);
-
+    $message = $update['callback_query']['message']['message_id'];
     $callback_tumbler = $update['callback_query']['data'];
 
     if (strpos($callback_tumbler,'@')>0){
@@ -107,7 +108,7 @@ if (isset($update['callback_query'])) {
         $text = '/'.$text;
 
 
-        newmessage(trim($text),$newUser,$connect,$arrpage[0]);
+        newmessage(trim($text),$newUser,$connect,$arrpage[0],$message);
 
     }
     else{
@@ -218,7 +219,7 @@ $newTextMessage -> textmessage = $update['message']['text'];
 
 $message = !empty($newTextMessage->textmessage) ? newmessage($newTextMessage->textmessage, $newUser, $connect) : null ;
 
-function newmessage($fullStr,$newUser,$connect,$deftext=0){
+function newmessage($fullStr,$newUser,$connect,$deftext=0,$message=''){
     //проверим текст на содержание кодовых символов @
     $pos = !is_null(strpos($fullStr,"@"))  ? explode('@' , $fullStr) : $fullStr;
     $text = count($pos) > 0 ? strtolower($pos[0]) : strtolower($pos);
@@ -237,7 +238,7 @@ function newmessage($fullStr,$newUser,$connect,$deftext=0){
             $keyboard = [
                 'inline_keyboard' => [
                     [
-                        ['text' => '🙋 Приступить к работе', 'callback_data' => 'startshoptoday#']
+                        ['text' => '🙋 Приступить к работе', 'callback_data' => 'startshoptoday#'],
 
                     ],
                 ]
@@ -255,6 +256,15 @@ function newmessage($fullStr,$newUser,$connect,$deftext=0){
                 ));
 
             file_get_contents($botAPI . "/sendMessage?{$data}&reply_markup={$keyboard}");
+
+            if ($status !='buyer'){
+                sendTelegram(
+                    'sendMessage',
+                    array(
+                        'chat_id' => $idchat,
+                        'text' => 'Просмотреть список команд /manager',
+                    ));
+            }
             break;
         case ("/buy"):
 
@@ -309,18 +319,28 @@ EOD;
             updateStatusUser($newUser,$connect,'buyer',$deftext);
             break;
         case("/saletodayid"):
-            otchet($text,$newUser,$connect);
+            otchet($text,$newUser,$connect,$message);
             //saleToDay($arrpage[0],$newUser,$connect);
 
             break;
         case("/saletoday"):
 
-            saleToDay($arrpage[0],$newUser,$connect);
+            saleToDay($arrpage[0],$newUser,$connect,$message);
+
+            break;
+        case("/saleall"):
+
+            callReport($arrpage[0],$newUser,$connect,$message);
 
             break;
         case("/manager"):
-
-            if ($newUser->status != 'buyer'){
+            sendTelegram(
+                'sendMessage',
+                array(
+                    'chat_id' => $idchat,
+                    'text' => 'Тут будут данные по продажам',
+                ));
+            if ($newUser->status == 'seller'){
 
 
                 $keyboard = [
@@ -335,19 +355,21 @@ EOD;
                         ],
                     ]
                 ];
-                $reply_markup = json_encode($keyboard);
+            }elseif ($newUser->status == 'manager'){
+                $keyboard = [
+                    'inline_keyboard' => [
 
-                //Отправляю картинку с teenager
-                sendTelegram(
-                    'sendMessage',
-                    array(
-                        'chat_id' => $idchat,
-                        'text' => 'Команды для менеджера магазина',
-                        'reply_markup'=>$reply_markup,
-                    ));
+                        [
+                            ['text' => '💵 Продажи за сегодня по артикулу', 'callback_data' => 'saletodayid#|i'],
+                            ['text' => '💰 Продажи за сегодня всего', 'callback_data' => 'saletoday#|d'],
+                        ],
+                        [
+                            ['text' => '💰 Продажи всего', 'callback_data' => 'saleall#|d'],
+                        ],
+                    ]
+                ];
 
-                file_get_contents($botAPI . "/sendMessage?{$data}&reply_markup={$keyboard}");
-            }else {
+            }elseif($newUser->status == 'buyer') {
                 sendTelegram(
                     'sendMessage',
                     array(
@@ -355,6 +377,19 @@ EOD;
                         'text' => 'Нет полномочий! Код 1',
                     ));
             }
+            $reply_markup = json_encode($keyboard);
+
+            //Отправляю картинку с teenager
+            sendTelegram(
+                'sendMessage',
+                array(
+                    'chat_id' => $idchat,
+                    'text' => 'Команды для менеджера магазина /manager',
+                    'reply_markup'=>$reply_markup,
+                ));
+
+            file_get_contents($botAPI . "/sendMessage?{$data}&reply_markup={$keyboard}");
+
             break;
         case ("/saleinfo"):
 
@@ -379,6 +414,15 @@ EOD;
         array(
             'chat_id' => $idchat,
             'text' => $sendtext
+        )
+    );
+}
+function test(){
+    sendTelegram(
+        'sendMessage',
+        array(
+            'chat_id' => 645879928,
+            'text' => 'succes'
         )
     );
 }

@@ -5,46 +5,46 @@ class report{
         $this-> arr = $arr;
     }
 
-   public function sortByMonth($month){
-       $this->month = strtolower($month);
+    public function sortByMonth($month){
+        $this->month = strtolower($month);
 
-       $a=[];
+        $a=[];
 
-       if( count($this->arr) > 0 ){
-           foreach ($this->arr as $item){
+        if( count($this->arr) > 0 ){
+            foreach ($this->arr as $item){
 
-               $date = date_create($item['date']);
-               $newDateFormat = ['date' => strtolower(date_format( $date,'F'))];
-               $a[] = array_replace($item,$newDateFormat);
+                $date = date_create($item['date']);
+                $newDateFormat = ['date' => strtolower(date_format( $date,'F'))];
+                $a[] = array_replace($item,$newDateFormat);
 
-           }
-           $arr = array_replace($this->arr,$a);
+            }
+            $arr = array_replace($this->arr,$a);
 
-           $arr = array_filter($arr, function($arr1){
+            $arr = array_filter($arr, function($arr1){
 
-                 return in_array($this->month,$arr1);
+                return in_array($this->month,$arr1);
 
-                 });
+            });
 
-       }
-       return $arr;
-   }
+        }
+        return $arr;
+    }
 
-   public function sortBySellerName($seller){
-       $this->seller = $seller;
-       $arr = $this->arr;
-       $arr = array_filter($arr,function($arr1){
-          return in_array($this->seller, $arr1);
-       });
-       return $arr;
-   }
-   public function sumArr($arrToSum){
-       $sum = 0;
-       foreach ($arrToSum as $item){
+    public function sortBySellerName($seller){
+        $this->seller = $seller;
+        $arr = $this->arr;
+        $arr = array_filter($arr,function($arr1){
+            return in_array($this->seller, $arr1);
+        });
+        return $arr;
+    }
+    public function sumArr($arrToSum){
+        $sum = 0;
+        foreach ($arrToSum as $item){
 
-           $sum = $sum + $item['totalPrice'];
+            $sum = $sum + $item['totalPrice'];
 
-       }
-       return $sum;
-   }
+        }
+        return $sum;
+    }
 }
